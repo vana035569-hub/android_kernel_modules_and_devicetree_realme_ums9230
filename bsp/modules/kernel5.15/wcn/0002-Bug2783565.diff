@@ -1,0 +1,83 @@
+From d93f6a8585f821dc85715bfc47c81cdd1f6a1bcc Mon Sep 17 00:00:00 2001
+From: Zhilong Chen <zhilong.chen@unisoc.com>
+Date: Sat, 14 Sep 2024 15:11:03 +0800
+Subject: [PATCH] Bug #2783565 unisoc_wcn_bsp:assert when gnss boot fail
+
+[root cause  ]: assert when gnss boot fail
+[changes     ]:wcn
+[side effects]:no
+[self test   ]:yes
+[download normally]:yes
+[power on/off normally]:yes
+[do common repository/branch inspection]:yes
+[is there dependence]:no
+[confirm dependent commit]:yes
+[board]:9863a
+[test case]:pass
+[reviewers]:yonghan.ye
+
+commit_template_version:v1
+
+Change-Id: I372ea1d6c2592ac78cfd788d73ce4a82c0a77888
+Signed-off-by: Zhilong Chen <zhilong.chen@unisoc.com>
+---
+ bsp/unisoc_wcn_bsp/boot/wcn_integrate_boot.c | 16 +++++++++-------
+ 1 file changed, 9 insertions(+), 7 deletions(-)
+
+diff --git a/bsp/unisoc_wcn_bsp/boot/wcn_integrate_boot.c b/bsp/unisoc_wcn_bsp/boot/wcn_integrate_boot.c
+index a7976448..0fb7eedd 100644
+--- a/bsp/unisoc_wcn_bsp/boot/wcn_integrate_boot.c
++++ b/bsp/unisoc_wcn_bsp/boot/wcn_integrate_boot.c
+@@ -1074,15 +1074,17 @@ static void gnss_read_boot_flag(struct wcn_device *wcn_dev)
+ 			break;
+ 
+ 		msleep(MARLIN_WAIT_CP_INIT_POLL_TIME_MS);
+-		WCN_INFO("gnss boot: magic_value=%d, wait_count=%d\n",
++		WCN_INFO("gnss boot: magic_value=0x%x, wait_count=%d\n",
+ 			 magic_value, wait_count);
+ 	}
+ 
+ 	if (wait_count >= GNSS_WAIT_CP_INIT_COUNT) {
+ 		gnss_set_boot_status(WCN_BOOT_CP2_ERR_BOOT);
++		WCN_ERR("%s timeout!\n", __func__);
++	} else {
++		gnss_set_boot_status(WCN_BOOT_CP2_OK);
++		WCN_INFO("gnss finish!\n");
+ 	}
+-
+-	WCN_INFO("gnss finish!\n");
+ }
+ 
+ static int wcn_wait_gnss_boot(struct wcn_device *wcn_dev)
+@@ -1095,6 +1097,8 @@ static int wcn_wait_gnss_boot(struct wcn_device *wcn_dev)
+ 
+ 	if (cali_flag) {
+ 		gnss_read_boot_flag(wcn_dev);
++		if (gnss_get_boot_status() == WCN_BOOT_CP2_ERR_BOOT)
++			return -1;
+ 		wcn_slpinfo_statistics(WCN_SOURCE_GNSS, true);
+ 		return 0;
+ 	}
+@@ -1132,6 +1136,7 @@ static int wcn_wait_gnss_boot(struct wcn_device *wcn_dev)
+ 	}
+ 
+ 	cali_flag = 1;
++	gnss_set_boot_status(WCN_BOOT_CP2_OK);
+ 	wcn_slpinfo_statistics(WCN_SOURCE_GNSS, true);
+ 	return 0;
+ }
+@@ -3621,10 +3626,7 @@ int start_integrate_wcn_truely(u32 subsys)
+ 
+ 	if (ret_wait_completion <= 0) {
+ 		/* marlin download fail dump memory */
+-		if (is_marlin)
+-			goto err_boot_marlin;
+-		mutex_unlock(&wcn_dev->power_lock);
+-		return -1;
++		goto err_boot_marlin;
+ 	} else if (wcn_dev->boot_cp_status) {
+ 		if (wcn_dev->boot_cp_status == WCN_BOOT_CP2_ERR_DONW_IMG) {
+ 			mutex_unlock(&wcn_dev->power_lock);
+-- 
+2.25.1
+
