@@ -41,7 +41,7 @@
 #define UP_THRESHOLD        9/10
 #define FREQ_KHZ            1000
 
-#define T606_GPLL_FREQ      650000000
+#define T606_GPLL_FREQ      850000000
 #define T616_GPLL_FREQ      750000000
 //#define DEFAULT_GPLL_FREQ   800000000
 
